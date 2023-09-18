@@ -1,40 +1,45 @@
 /**
- * Hello world
+ * Store books
  */
-
 import {
+  // Función para establecer una conexión a la red de Solana
   establishConnection,
+  // Función para determinar quién paga las tarifas
   establishPayer,
+  // Función para verificar si el programa está implementado
   checkProgram,
-  sayHello,
+  // Función para realizar una operación de "vender libro"
+  sellBook,
+  // Función para obtener el número de compras realizadas
   reportGreetings,
+  // Importa las funciones desde el módulo './store_books'
 } from './store_books';
 
 async function main() {
   console.log("Solana account...");
 
-  // Establish connection to the cluster
+  // Establece una conexión con el clúster de Solana
   await establishConnection();
 
-  // Determine who pays for the fees
+  // Determina quién pagará las tarifas
   await establishPayer();
 
-  // Check if the program has been deployed
+  // Verifica si el programa ha sido implementado
   await checkProgram();
 
-  // Say hello to an account
-  await sayHello();
+  // Saluda a una cuenta o realiza una operación de "vender libro"
+  await sellBook();
 
-  // Find out how many times that account has been greeted
+  // Obtiene la cantidad de compras realizadas
   await reportGreetings();
 
-  console.log('Success');
+  console.log('Éxito');
 }
 
 main().then(
-  () => process.exit(),
-  err => {
-    console.error(err);
-    process.exit(-1);
-  },
+    () => process.exit(),
+    err => {
+      console.error(err);
+      process.exit(-1);
+    },
 );

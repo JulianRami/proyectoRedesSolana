@@ -10,54 +10,57 @@ import {
   TransactionInstruction,
   Transaction,
   sendAndConfirmTransaction,
+  // Importa diversas clases y funciones desde la biblioteca '@solana/web3.js'.
 } from '@solana/web3.js';
+// Importa el módulo 'fs' para trabajar con el sistema de archivos.
 import fs from 'mz/fs';
+// Importa el módulo 'path' para trabajar con rutas de archivos y directorios.
 import path from 'path';
+// Importa la biblioteca 'borsh' para trabajar con serialización/deserialización.
 import * as borsh from 'borsh';
-
+// Importa funciones de utilidad desde el archivo './utils'.
 import {getPayer, getRpcUrl, createKeypairFromFile} from './utils';
 
 /**
- * Connection to the network
+ * Conexión a la red de Solana
  */
 let connection: Connection;
 
 /**
- * Keypair associated to the fees' payer
+ * Keypair asociado al pagador de las tarifas
  */
 let payer: Keypair;
 
 /**
- * Hello world's program id
+ * ID del programa "Store Books"
  */
 let programId: PublicKey;
 
 /**
- * The public key of the account we are saying hello to
+ * La clave pública de la cuenta en la que estamos comprando
  */
 let greetedPubkey: PublicKey;
 
 /**
- * Path to program files
+ * Ruta a los archivos del programa
  */
 const PROGRAM_PATH = path.resolve(__dirname, '../../dist/program');
 
 /**
- * Path to program shared object file which should be deployed on chain.
- * This file is created when running either:
- *   - `npm run build:program-c`
+ * Ruta al archivo de objeto compartido del programa que debe implementarse en la cadena.
+ * Este archivo se crea al ejecutar cualquiera de los siguientes comandos:
  *   - `npm run build:program-rust`
  */
 const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, 'storebooks.so');
 
 /**
- * Path to the keypair of the deployed program.
- * This file is created when running `solana program deploy dist/program/storebooks.so`
+ * Ruta al par de claves del programa implementado.
+ * Este archivo se crea al ejecutar `solana program deploy dist/program/storebooks.so`.
  */
 const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'storebooks-keypair.json');
 
 /**
- * The state of a greeting account managed by the hello world program
+ * El estado de una cuenta de compra gestionada por el programa "Store Books"
  */
 class GreetingAccount {
   counter = 0;
@@ -69,166 +72,166 @@ class GreetingAccount {
 }
 
 /**
- * Borsh schema definition for greeting accounts
+ * Definición de esquema Borsh para cuentas de compra
  */
 const GreetingSchema = new Map([
   [GreetingAccount, {kind: 'struct', fields: [['counter', 'u32']]}],
 ]);
 
 /**
- * The expected size of each greeting account.
+ * El tamaño esperado de cada cuenta de compra.
  */
 const GREETING_SIZE = borsh.serialize(
-  GreetingSchema,
-  new GreetingAccount(),
+    GreetingSchema,
+    new GreetingAccount(),
 ).length;
 
 /**
- * Establish a connection to the cluster
+ * Establece una conexión con la red
  */
 export async function establishConnection(): Promise<void> {
   const rpcUrl = await getRpcUrl();
-  connection = new Connection(rpcUrl, 'confirmed');
-  const version = await connection.getVersion();
-  console.log('Connection to cluster established:', rpcUrl, version);
+  connection = new Connection(rpcUrl, 'confirmed'); // Crea una conexión a la red de Solana.
+  const version = await connection.getVersion(); // Obtiene la versión de la red.
+  console.log('Conexión a la red establecida:', rpcUrl, version);
 }
 
 /**
- * Establish an account to pay for everything
+ * Establece una cuenta para pagar todas las tarifas
  */
 export async function establishPayer(): Promise<void> {
   let fees = 0;
   if (!payer) {
     const {feeCalculator} = await connection.getRecentBlockhash();
 
-    // Calculate the cost to fund the greeter account
+    // Calcula el costo para financiar la cuenta de compra
     fees += await connection.getMinimumBalanceForRentExemption(GREETING_SIZE);
 
-    // Calculate the cost of sending transactions
+    // Calcula el costo de enviar transacciones
     fees += feeCalculator.lamportsPerSignature * 100; // wag
 
-    payer = await getPayer();
+    payer = await getPayer(); // Obtiene la clave del pagador.
   }
 
   let lamports = await connection.getBalance(payer.publicKey);
   if (lamports < fees) {
-    // If current balance is not enough to pay for fees, request an airdrop
+    // Si el saldo actual no es suficiente para pagar las tarifas, solicita un airdrop.
     const sig = await connection.requestAirdrop(
-      payer.publicKey,
-      fees - lamports,
+        payer.publicKey,
+        fees - lamports,
     );
-    await connection.confirmTransaction(sig);
-    lamports = await connection.getBalance(payer.publicKey);
+    await connection.confirmTransaction(sig); // Confirma la transacción del airdrop.
+    lamports = await connection.getBalance(payer.publicKey); // Actualiza el saldo.
   }
 
   console.log(
-    'Using account',
-    payer.publicKey.toBase58(),
-    'containing',
-    lamports / LAMPORTS_PER_SOL,
-    'SOL to pay for fees',
+      'Usando la cuenta',
+      payer.publicKey.toBase58(),
+      'que contiene',
+      lamports / LAMPORTS_PER_SOL,
+      'SOL para pagar las tarifas',
   );
 }
 
 /**
- * Check if the hello world BPF program has been deployed
+ * Comprueba si el programa "Store Books" de BPF se ha implementado
  */
 export async function checkProgram(): Promise<void> {
-  // Read program id from keypair file
+  // Lee el ID del programa desde el archivo de par de claves
   try {
     const programKeypair = await createKeypairFromFile(PROGRAM_KEYPAIR_PATH);
     programId = programKeypair.publicKey;
   } catch (err) {
     const errMsg = (err as Error).message;
     throw new Error(
-      `Failed to read program keypair at '${PROGRAM_KEYPAIR_PATH}' due to error: ${errMsg}. Program may need to be deployed with \`solana program deploy dist/program/storebooks.so\``,
+        `No se pudo leer el par de claves del programa en '${PROGRAM_KEYPAIR_PATH}' debido al error: ${errMsg}. Es posible que el programa deba implementarse con \`solana program deploy dist/program/storebooks.so\``,
     );
   }
 
-  // Check if the program has been deployed
+  // Comprueba si el programa se ha implementado
   const programInfo = await connection.getAccountInfo(programId);
   if (programInfo === null) {
     if (fs.existsSync(PROGRAM_SO_PATH)) {
       throw new Error(
-        'Program needs to be deployed with `solana program deploy dist/program/storebooks.so`',
+          'El programa debe implementarse con `solana program deploy dist/program/storebooks.so`',
       );
     } else {
-      throw new Error('Program needs to be built and deployed');
+      throw new Error('El programa debe compilarse e implementarse');
     }
   } else if (!programInfo.executable) {
-    throw new Error(`Program is not executable`);
+    throw new Error(`El programa no es ejecutable`);
   }
-  console.log(`Using program ${programId.toBase58()}`);
+  console.log(`Usando el programa ${programId.toBase58()}`);
 
-  // Derive the address (public key) of a greeting account from the program so that it's easy to find later.
-  const GREETING_SEED = 'hello';
+  // Deriva la dirección (clave pública) de una cuenta de compra a partir del programa para que sea fácil de encontrar más tarde.
+  const GREETING_SEED = 'compra';
   greetedPubkey = await PublicKey.createWithSeed(
-    payer.publicKey,
-    GREETING_SEED,
-    programId,
+      payer.publicKey,
+      GREETING_SEED,
+      programId,
   );
 
-  // Check if the greeting account has already been created
+  // Comprueba si la cuenta de compra ya ha sido creada
   const greetedAccount = await connection.getAccountInfo(greetedPubkey);
   if (greetedAccount === null) {
     console.log(
-      'Creating account',
-      greetedPubkey.toBase58(),
-      'to say hello to',
+        'Creando cuenta',
+        greetedPubkey.toBase58(),
+        '',
     );
     const lamports = await connection.getMinimumBalanceForRentExemption(
-      GREETING_SIZE,
+        GREETING_SIZE,
     );
 
     const transaction = new Transaction().add(
-      SystemProgram.createAccountWithSeed({
-        fromPubkey: payer.publicKey,
-        basePubkey: payer.publicKey,
-        seed: GREETING_SEED,
-        newAccountPubkey: greetedPubkey,
-        lamports,
-        space: GREETING_SIZE,
-        programId,
-      }),
+        SystemProgram.createAccountWithSeed({
+          fromPubkey: payer.publicKey,
+          basePubkey: payer.publicKey,
+          seed: GREETING_SEED,
+          newAccountPubkey: greetedPubkey,
+          lamports,
+          space: GREETING_SIZE,
+          programId,
+        }),
     );
     await sendAndConfirmTransaction(connection, transaction, [payer]);
   }
 }
 
 /**
- * Say hello
+ * Compra
  */
-export async function sayHello(): Promise<void> {
-  console.log('Saying hello to', greetedPubkey.toBase58());
+export async function sellBook(): Promise<void> {
+  console.log('Comprando libro en cuenta :', greetedPubkey.toBase58());
   const instruction = new TransactionInstruction({
     keys: [{pubkey: greetedPubkey, isSigner: false, isWritable: true}],
     programId,
-    data: Buffer.alloc(0), // All instructions are hellos
+    data: Buffer.alloc(0), // Todas las instrucciones son compras
   });
   await sendAndConfirmTransaction(
-    connection,
-    new Transaction().add(instruction),
-    [payer],
+      connection,
+      new Transaction().add(instruction),
+      [payer],
   );
 }
 
 /**
- * Report the number of times the greeted account has been said hello to
+ * Informa la cantidad de veces que se ha comprado un libro en la cuenta
  */
 export async function reportGreetings(): Promise<void> {
   const accountInfo = await connection.getAccountInfo(greetedPubkey);
   if (accountInfo === null) {
-    throw 'Error: cannot find the greeted account';
+    throw 'Error: no se puede encontrar la cuenta de compra';
   }
   const greeting = borsh.deserialize(
-    GreetingSchema,
-    GreetingAccount,
-    accountInfo.data,
+      GreetingSchema,
+      GreetingAccount,
+      accountInfo.data,
   );
   console.log(
-    greetedPubkey.toBase58(),
-    'has been greeted',
-    greeting.counter,
-    'time(s)',
+      greetedPubkey.toBase58(),
+      'ha sido comprado',
+      greeting.counter,
+      'vez/veces',
   );
 }
