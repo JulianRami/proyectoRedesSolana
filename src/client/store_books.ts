@@ -39,7 +39,7 @@ let programId: PublicKey;
 /**
  * La clave pública de la cuenta en la que estamos comprando
  */
-let greetedPubkey: PublicKey;
+let buyPubkey: PublicKey;
 
 /**
  * Ruta a los archivos del programa
@@ -62,7 +62,7 @@ const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'storebooks-keypair.json');
 /**
  * El estado de una cuenta de compra gestionada por el programa "Store Books"
  */
-class GreetingAccount {
+class BuyAccount {
   counter = 0;
   constructor(fields: {counter: number} | undefined = undefined) {
     if (fields) {
@@ -74,16 +74,16 @@ class GreetingAccount {
 /**
  * Definición de esquema Borsh para cuentas de compra
  */
-const GreetingSchema = new Map([
-  [GreetingAccount, {kind: 'struct', fields: [['counter', 'u32']]}],
+const BuySchema = new Map([
+  [BuyAccount, {kind: 'struct', fields: [['counter', 'u32']]}],
 ]);
 
 /**
  * El tamaño esperado de cada cuenta de compra.
  */
-const GREETING_SIZE = borsh.serialize(
-    GreetingSchema,
-    new GreetingAccount(),
+const BUY_SIZE = borsh.serialize(
+    BuySchema,
+    new BuyAccount(),
 ).length;
 
 /**
@@ -105,7 +105,7 @@ export async function establishPayer(): Promise<void> {
     const {feeCalculator} = await connection.getRecentBlockhash();
 
     // Calcula el costo para financiar la cuenta de compra
-    fees += await connection.getMinimumBalanceForRentExemption(GREETING_SIZE);
+    fees += await connection.getMinimumBalanceForRentExemption(BUY_SIZE);
 
     // Calcula el costo de enviar transacciones
     fees += feeCalculator.lamportsPerSignature * 100; // wag
@@ -144,7 +144,8 @@ export async function checkProgram(): Promise<void> {
   } catch (err) {
     const errMsg = (err as Error).message;
     throw new Error(
-        `No se pudo leer el par de claves del programa en '${PROGRAM_KEYPAIR_PATH}' debido al error: ${errMsg}. Es posible que el programa deba implementarse con \`solana program deploy dist/program/storebooks.so\``,
+        `No se pudo leer el par de claves del programa en '${PROGRAM_KEYPAIR_PATH}' debido al error: ${errMsg}. 
+        Es posible que el programa deba implementarse con \`solana program deploy dist/program/storebooks.so\``,
     );
   }
 
@@ -164,33 +165,33 @@ export async function checkProgram(): Promise<void> {
   console.log(`Usando el programa ${programId.toBase58()}`);
 
   // Deriva la dirección (clave pública) de una cuenta de compra a partir del programa para que sea fácil de encontrar más tarde.
-  const GREETING_SEED = 'compra';
-  greetedPubkey = await PublicKey.createWithSeed(
+  const BUY_SEED = 'compra';
+  buyPubkey = await PublicKey.createWithSeed(
       payer.publicKey,
-      GREETING_SEED,
+      BUY_SEED,
       programId,
   );
 
   // Comprueba si la cuenta de compra ya ha sido creada
-  const greetedAccount = await connection.getAccountInfo(greetedPubkey);
-  if (greetedAccount === null) {
+  const buyAccount = await connection.getAccountInfo(buyPubkey);
+  if (buyAccount === null) {
     console.log(
         'Creando cuenta',
-        greetedPubkey.toBase58(),
+        buyPubkey.toBase58(),
         '',
     );
     const lamports = await connection.getMinimumBalanceForRentExemption(
-        GREETING_SIZE,
+        BUY_SIZE,
     );
 
     const transaction = new Transaction().add(
         SystemProgram.createAccountWithSeed({
           fromPubkey: payer.publicKey,
           basePubkey: payer.publicKey,
-          seed: GREETING_SEED,
-          newAccountPubkey: greetedPubkey,
+          seed: BUY_SEED,
+          newAccountPubkey: buyPubkey,
           lamports,
-          space: GREETING_SIZE,
+          space: BUY_SIZE,
           programId,
         }),
     );
@@ -202,9 +203,9 @@ export async function checkProgram(): Promise<void> {
  * Compra
  */
 export async function sellBook(): Promise<void> {
-  console.log('Comprando libro en cuenta :', greetedPubkey.toBase58());
+  console.log('Comprando libro en cuenta :', buyPubkey.toBase58());
   const instruction = new TransactionInstruction({
-    keys: [{pubkey: greetedPubkey, isSigner: false, isWritable: true}],
+    keys: [{pubkey: buyPubkey, isSigner: false, isWritable: true}],
     programId,
     data: Buffer.alloc(0), // Todas las instrucciones son compras
   });
@@ -218,20 +219,20 @@ export async function sellBook(): Promise<void> {
 /**
  * Informa la cantidad de veces que se ha comprado un libro en la cuenta
  */
-export async function reportGreetings(): Promise<void> {
-  const accountInfo = await connection.getAccountInfo(greetedPubkey);
+export async function reportBuys(): Promise<void> {
+  const accountInfo = await connection.getAccountInfo(buyPubkey);
   if (accountInfo === null) {
     throw 'Error: no se puede encontrar la cuenta de compra';
   }
-  const greeting = borsh.deserialize(
-      GreetingSchema,
-      GreetingAccount,
+  const buy = borsh.deserialize(
+      BuySchema,
+      BuyAccount,
       accountInfo.data,
   );
   console.log(
-      greetedPubkey.toBase58(),
+      buyPubkey.toBase58(),
       'ha sido comprado',
-      greeting.counter,
+      buy.counter,
       'vez/veces',
   );
 }

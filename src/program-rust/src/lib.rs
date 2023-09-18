@@ -10,7 +10,7 @@ use solana_program::{
 
 /// Define el tipo de estado almacenado en las cuentas
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct GreetingAccount {
+pub struct BuyAccount {
     /// número de libros comprados
     pub counter: u32,
 }
@@ -42,9 +42,9 @@ pub fn process_instruction(
     }
 
     // Incrementar y almacenar la cantidad de veces que se ha comprado en la cuenta
-    let mut greeting_account = GreetingAccount::try_from_slice(&account.data.borrow())?;
-    greeting_account.counter += 1;
-    greeting_account.serialize(&mut &mut account.data.borrow_mut()[..])?;
+    let mut buy_account = BuyAccount::try_from_slice(&account.data.borrow())?;
+    buy_account.counter += 1;
+    buy_account.serialize(&mut &mut account.data.borrow_mut()[..])?;
 
     msg!("¡Comprado {} vez(es)!", greeting_account.counter);
 
@@ -83,7 +83,7 @@ mod test {
 
         // Asegurarse de que el contador de compras comienza en 0
         assert_eq!(
-            GreetingAccount::try_from_slice(&accounts[0].data.borrow())
+            BuyAccount::try_from_slice(&accounts[0].data.borrow())
                 .unwrap()
                 .counter,
             0
@@ -94,7 +94,7 @@ mod test {
 
         // Verificar que el contador de compras se incrementa a 1
         assert_eq!(
-            GreetingAccount::try_from_slice(&accounts[0].data.borrow())
+            BuyAccount::try_from_slice(&accounts[0].data.borrow())
                 .unwrap()
                 .counter,
             1
@@ -105,7 +105,7 @@ mod test {
 
         // Verificar que el contador de compras se incrementa a 2
         assert_eq!(
-            GreetingAccount::try_from_slice(&accounts[0].data.borrow())
+            BuyAccount::try_from_slice(&accounts[0].data.borrow())
                 .unwrap()
                 .counter,
             2

@@ -11,7 +11,7 @@ import {
   // Función para realizar una operación de "vender libro"
   sellBook,
   // Función para obtener el número de compras realizadas
-  reportGreetings,
+  reportBuys,
   // Importa las funciones desde el módulo './store_books'
 } from './store_books';
 
@@ -27,11 +27,11 @@ async function main() {
   // Verifica si el programa ha sido implementado
   await checkProgram();
 
-  // Saluda a una cuenta o realiza una operación de "vender libro"
+  // Realiza una operación de "vender libro"
   await sellBook();
 
   // Obtiene la cantidad de compras realizadas
-  await reportGreetings();
+  await reportBuys();
 
   console.log('Éxito');
 }
