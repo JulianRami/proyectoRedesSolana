@@ -37,7 +37,7 @@ let payer: Keypair;
 let programId: PublicKey;
 
 /**
- * La clave pública de la cuenta en la que estamos comprando
+ * La clave pública de la cuenta en la que se esta comprando
  */
 let buyPubkey: PublicKey;
 

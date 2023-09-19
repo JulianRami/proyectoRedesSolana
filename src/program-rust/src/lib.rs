@@ -46,7 +46,7 @@ pub fn process_instruction(
     buy_account.counter += 1;
     buy_account.serialize(&mut &mut account.data.borrow_mut()[..])?;
 
-    msg!("¡Comprado {} vez(es)!", greeting_account.counter);
+    msg!("¡Comprado {} vez(es)!", buy_account.counter);
 
     Ok(())
 }
